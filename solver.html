@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boolean Function Minimizer</title>
+    <script>
+        function countOnes(n) {
+            return n.toString(2).split('1').length - 1;
+        }
+        function findPrimeImplicants(minterms, numVars) {
+            let groups = Array.from({ length: numVars + 1 }, () => []);
+            let used = {};
+            let primeImplicants = new Set();
+            for (let minterm of minterms) {
+                let binary = minterm.toString(2).padStart(numVars, '0');
+                groups[countOnes(minterm)].push(binary);
+                used[binary] = false;
+            }
+
+            let done = false;
+            while (!done) {
+                done = true;
+                let newGroups = Array.from({ length: numVars }, () => []);
+                let newUsed = {};
+
+                for (let i = 0; i < groups.length - 1; i++) {
+                    for (let term1 of groups[i]) {
+                        for (let term2 of groups[i + 1]) {
+                            let diffCount = 0;
+                            let combined = '';
+
+                            for (let j = 0; j < numVars; j++) {
+                                if (term1[j] !== term2[j]) {
+                                    diffCount++;
+                                    combined += '-';
+                                } else {
+                                    combined += term1[j];
+                                }
+                            }
+
+                            if (diffCount === 1) {
+                                newGroups[i].push(combined);
+                                used[term1] = true;
+                                used[term2] = true;
+                                newUsed[combined] = false;
+                                done = false;
+                            }
+                        }
+                    }
+                }
+
+                for (let group of groups) {
+                    for (let term of group) {
+                        if (!used[term]) {
+                            primeImplicants.add(term);
+                        }
+                    }
+                }
+
+                groups = newGroups;
+                used = newUsed;
+            }
+
+            return Array.from(primeImplicants);
+        }
+        function binaryToProductTermWithNumbers(binary) {
+            let term = '';
+            for (let i = 0; i < binary.length; i++) {
+                if (binary[i] === '1') {
+                    term += `+${i + 1} `;
+                } else if (binary[i] === '0') {
+                    term += `-${i + 1} `;
+                }
+            }
+            return term.trim();
+        }
+        function generateBooleanEquation(primeImplicants) {
+            let terms = primeImplicants.map(binary => {
+                let term = '';
+                for (let i = 0; i < binary.length; i++) {
+                    let variable = String.fromCharCode(65 + i); // Convert index to A, B, C, etc.
+                    if (binary[i] === '1') {
+                        term += variable;
+                    } else if (binary[i] === '0') {
+                        term += variable + "'";
+                    }
+                }
+                return term;
+            });
+            return terms.join(' + ');
+        }
+        function minimizeBooleanFunction() {
+            let input = document.getElementById("minterms").value;
+            let outputEquation = document.getElementById("outputEquation");
+            let outputProductTerms = document.getElementById("outputProductTerms");
+            outputEquation.textContent = "";
+            outputProductTerms.innerHTML = "";
+
+            try {
+                let minterms = input.split(',').map(Number);
+                let numVars = Math.ceil(Math.log2(Math.max(...minterms) + 1));
+                let primeImplicants = findPrimeImplicants(minterms, numVars);
+                let equation = generateBooleanEquation(primeImplicants);
+                outputEquation.textContent = equation;
+                primeImplicants.forEach(implicant => {
+                    let productTerm = binaryToProductTermWithNumbers(implicant);
+                    let listItem = document.createElement("li");
+                    listItem.textContent = productTerm;
+                    outputProductTerms.appendChild(listItem);
+                });
+            } catch (error) {
+                outputEquation.textContent = "Error: Invalid input.";
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Quine–McCluskey algorithm</h1>
+    <form onsubmit="minimizeBooleanFunction(); return false;">
+        <label for="minterms">Enter minterms (comma-separated):</label><br>
+        <input type="text" id="minterms" required><br><br>
+        <button type="submit">Minimize</button>
+    </form>
+
+    <h2>Minimized Boolean Equation:</h2>
+    <p id="outputEquation"></p>
+
+    <h2>Product Terms:</h2>
+    <ul id="outputProductTerms"></ul>
+</body>
+</html>
