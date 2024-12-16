@@ -17,19 +17,16 @@
                 groups[countOnes(minterm)].push(binary);
                 used[binary] = false;
             }
-
             let done = false;
             while (!done) {
                 done = true;
                 let newGroups = Array.from({ length: numVars }, () => []);
                 let newUsed = {};
-
                 for (let i = 0; i < groups.length - 1; i++) {
                     for (let term1 of groups[i]) {
                         for (let term2 of groups[i + 1]) {
                             let diffCount = 0;
                             let combined = '';
-
                             for (let j = 0; j < numVars; j++) {
                                 if (term1[j] !== term2[j]) {
                                     diffCount++;
@@ -38,7 +35,6 @@
                                     combined += term1[j];
                                 }
                             }
-
                             if (diffCount === 1) {
                                 newGroups[i].push(combined);
                                 used[term1] = true;
@@ -49,7 +45,6 @@
                         }
                     }
                 }
-
                 for (let group of groups) {
                     for (let term of group) {
                         if (!used[term]) {
@@ -61,8 +56,39 @@
                 groups = newGroups;
                 used = newUsed;
             }
-
             return Array.from(primeImplicants);
+        }
+        function covers(minterm, implicant) {
+            let binaryMinterm = minterm.toString(2).padStart(implicant.length, '0');
+            for (let i = 0; i < implicant.length; i++) {
+                if (implicant[i] !== '-' && implicant[i] !== binaryMinterm[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        function findEssentialPrimeImplicants(minterms, primeImplicants) {
+            let coverageMap = {};
+            minterms.forEach(minterm => {
+                coverageMap[minterm] = [];
+                primeImplicants.forEach((implicant, index) => {
+                    if (covers(minterm, implicant)) {
+                        coverageMap[minterm].push(index);
+                    }
+                });
+            });
+            let essentialIndexes = new Set();
+            for (let minterm in coverageMap) {
+                if (coverageMap[minterm].length === 1) {
+                    essentialIndexes.add(coverageMap[minterm][0]);
+                }
+            }
+            let essentialImplicants = [];
+            essentialIndexes.forEach(index => {
+                essentialImplicants.push(primeImplicants[index]);
+            });
+
+            return essentialImplicants;
         }
         function binaryToProductTermWithNumbers(binary) {
             let term = '';
@@ -101,9 +127,10 @@
                 let minterms = input.split(',').map(Number);
                 let numVars = Math.ceil(Math.log2(Math.max(...minterms) + 1));
                 let primeImplicants = findPrimeImplicants(minterms, numVars);
-                let equation = generateBooleanEquation(primeImplicants);
+                let essentialImplicants = findEssentialPrimeImplicants(minterms, primeImplicants);
+                let equation = generateBooleanEquation(essentialImplicants);
                 outputEquation.textContent = equation;
-                primeImplicants.forEach(implicant => {
+                essentialImplicants.forEach(implicant => {
                     let productTerm = binaryToProductTermWithNumbers(implicant);
                     let listItem = document.createElement("li");
                     listItem.textContent = productTerm;
@@ -118,7 +145,7 @@
 <body>
     <h1>Quine–McCluskey algorithm</h1>
     <form onsubmit="minimizeBooleanFunction(); return false;">
-        <label for="minterms">Enter minterms (comma-separated):</label><br>
+        <label for="minterms">Enter minterms (comma-separated) Ex: 1,4,8,19,23:</label><br>
         <input type="text" id="minterms" required><br><br>
         <button type="submit">Minimize</button>
     </form>
