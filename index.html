@@ -68,28 +68,38 @@
             return true;
         }
         function findEssentialPrimeImplicants(minterms, primeImplicants) {
-            let coverageMap = {};
-            minterms.forEach(minterm => {
-                coverageMap[minterm] = [];
-                primeImplicants.forEach((implicant, index) => {
-                    if (covers(minterm, implicant)) {
-                        coverageMap[minterm].push(index);
+        let uncoveredTerms = new Set(minterms);
+        let selectedImplicants = new Set();
+
+        while (uncoveredTerms.size > 0) {
+            let bestImplicant = null;
+            let maxCover = 0;
+            for (let implicant of primeImplicants) {
+                let coverCount = 0;
+                for (let term of uncoveredTerms) {
+                    if (covers(term, implicant)) {
+                        coverCount++;
                     }
-                });
-            });
-            let essentialIndexes = new Set();
-            for (let minterm in coverageMap) {
-                if (coverageMap[minterm].length === 1) {
-                    essentialIndexes.add(coverageMap[minterm][0]);
+                }
+                if (coverCount > maxCover) {
+                    maxCover = coverCount;
+                    bestImplicant = implicant;
                 }
             }
-            let essentialImplicants = [];
-            essentialIndexes.forEach(index => {
-                essentialImplicants.push(primeImplicants[index]);
-            });
-
-            return essentialImplicants;
+            if (bestImplicant) {
+                selectedImplicants.add(bestImplicant);
+                for (let term of minterms) {
+                    if (covers(term, bestImplicant)) {
+                        uncoveredTerms.delete(term);
+                    }
+                }
+            } else {
+                break;
+            }
         }
+
+        return Array.from(selectedImplicants);
+    }
         function binaryToProductTermWithNumbers(binary) {
             let term = '';
             for (let i = 0; i < binary.length; i++) {
